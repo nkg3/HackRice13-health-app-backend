@@ -119,7 +119,6 @@ def make_app():
         (r"/api/itemList/", ItemListHandler),
         (r"/api/submitItem/", SubmitHandler),
         (r"/api/GetRoute/", RouteHandler),
-        (r"/api/tornado/(?P<one>[^\/]+)/?(?P<two>[^\/]+)?/?(?P<three>[^\/]+)?/?(?P<four>[^\/]+)?", ParamsHandler),
     ], **settings)
 
 
