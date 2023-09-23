@@ -237,8 +237,25 @@ class RouteHandler(BaseHandler):
         startingLocation = [data['lat'],data['long']]
         path, _ = minDistGradDescent(itemTypes, currentTime, locationsDict, startingLocation)
         #print(path)
-        for val in path:
-            self.write(val)
+
+        ret = []
+        for id in path:
+            # Query the database to find the location
+            db_location = await self.settings["db"]["locations"].find_one({'_id': id})
+
+            if db_location:
+                # Extract the required information and store it in the dictionary
+                ret.append(
+                    {   "id": id,
+                        'lat': db_location['latlong'][0],
+                        'long': db_location['latlong'][1],
+                        'name': db_location['name'],
+                        'vicinity': db_location['vicinity'],
+                    }
+                )
+
+        retDict = {'results': ret}
+        self.write(retDict)
         self.finish()
             
         
