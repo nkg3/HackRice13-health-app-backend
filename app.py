@@ -13,6 +13,8 @@ import googlemaps
 from bson import ObjectId
 from dotenv import load_dotenv
 from tornado import gen, web
+import tornado.web
+from tornado.web import StaticFileHandler
 
 #imports for victor
 import numpy as np
@@ -270,6 +272,20 @@ class GmapHandler(BaseHandler):
         self.set_status(200)
         self.write(searchResult)
 
+class SwaggerHandler(tornado.web.RequestHandler):
+    def get(self):
+        # Specify the path to your Swagger YAML file
+        swagger_file_path = "swagger.yaml"
+
+        try:
+            with open(swagger_file_path, "r", encoding="utf-8") as file:
+                swagger_content = file.read()
+                self.set_header("Content-Type", "text/yaml")
+                self.write(swagger_content)
+                self.finish()
+        except FileNotFoundError:
+            self.set_status(404)
+            self.write("Swagger file not found")
 
 def make_app():
     settings = dict(
@@ -288,6 +304,7 @@ def make_app():
         (r"/api/submitItem", SubmitHandler),
         (r"/api/gmap", GmapHandler),
         (r"/api/GetRoute", RouteHandler),
+        (r"/swagger.yaml", SwaggerHandler),
 
     ], **settings)
 
