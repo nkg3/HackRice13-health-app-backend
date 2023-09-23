@@ -98,50 +98,6 @@ class RouteHandler(BaseHandler):
     POST handler for getting the best route
     """
     async def post(self):
-        self.set_status(200)
-        data = tornado.escape.json_decode(self.request.body) #get info from front-end
-
-        gmap = self.settings["gmaps"]
-        value = gmap.places_nearby(location=((data["lat"],data["long"])), keyword='drugstore|pharmacy', rank_by='distance') #location around user location
-        
-        for result in value: #put locations into db if not already there
-            self.settings["db"]["locations"].update_one(
-                filter={
-                    '_id': result["place_id"],
-                },
-                update={
-                    '$setOnInsert': {
-                        'latlong': (result["geometry"]["location"]["lat"], result["geometry"]["location"]["lng"]),
-                        'stock': {},
-                        'name': result["name"],
-                        'vicinity': result['vicinity'],
-                    },
-                },
-                upsert=True,
-            )
-
-        #get locations nearby, their times, stock
-        locationsDict = {}
-        for result in value:
-            # Query the database to find the location
-            db_location = self.settings["db"]["locations"].find_one({'_id': result["place_id"]})
-
-            if db_location:
-                # Extract the required information and store it in the dictionary
-                locationsDict[result["place_id"]] = {
-                    'location': db_location['latlong'],
-                    'stock': [db_location['stock'], db_location['timestamp']]
-                }
-
-        #CALL THIS FOR ALGO
-        #itemTypes is list of strings we want
-        itemTypes = data["items"] #need to extend to multiple
-
-        currentTime = time.time
-
-        startingLocation = [data['lat'],data['long']]
-        minDistGradDescent(itemTypes, currentTime, locationsDict, startingLocation)
-        
 
         #VICTORS HELPER FUNCTIONS
         def calcProb(currentTime, listOfNumAndTime, averageNum):
@@ -157,8 +113,13 @@ class RouteHandler(BaseHandler):
 
 
         def individualFilter(itemType, currentTime, oneLocDict, averageNum):
-            filteredInnerDict = {'latlong': oneLocDict['latlong'],
+            if itemType in oneLocDict['stock']:
+                filteredInnerDict = {'latlong': oneLocDict['latlong'],
                         'prob': calcProb(currentTime, oneLocDict['stock'][itemType], averageNum)
+                        }
+            else:
+                filteredInnerDict = {'latlong': oneLocDict['latlong'],
+                        'prob': .5
                         }
             return filteredInnerDict
 
@@ -166,7 +127,12 @@ class RouteHandler(BaseHandler):
         def preProccessFilterAndComputeProbs(itemType, currentTime, locationsDict):
             averageNum = 0
             for locid in locationsDict:
-                averageNum += locationsDict[locid]['stock'][itemType][0]
+                if(itemType in locationsDict[locid]['stock']):
+                    averageNum += locationsDict[locid]['stock'][itemType][0]         
+                else:
+                    averageNum += 0
+                
+                
             averageNum = averageNum/len(locationsDict.keys())
 
             newFilteredDict = {}
@@ -220,7 +186,7 @@ class RouteHandler(BaseHandler):
                 i += 1
                 bestFound, expDistToGo, diff = minPathOneStep(starting, preProccessed, startingLocation)
                 starting = bestFound
-                print(starting, expDistToGo, diff)
+                #print(starting, expDistToGo, diff)
 
             return  bestFound, expDistToGo
 
@@ -240,6 +206,52 @@ class RouteHandler(BaseHandler):
 
             return currentMinPath, currentMinExpTime, firstTime - currentMinExpTime
         
+        self.set_status(200)
+        data = tornado.escape.json_decode(self.request.body) #get info from front-end
+
+        gmap = self.settings["gmaps"]
+        value = gmap.places_nearby(location=((data["lat"],data["long"])), keyword='drugstore|pharmacy', rank_by='distance') #location around user location
+        
+        for result in value['results']: #put locations into db if not already there
+            self.settings["db"]["locations"].update_one(
+                filter={
+                    '_id': result["place_id"],
+                },
+                update={
+                    '$setOnInsert': {
+                        'latlong': (result["geometry"]["location"]["lat"], result["geometry"]["location"]["lng"]),
+                        'stock': {},
+                        'name': result["name"],
+                        'vicinity': result['vicinity'],
+                    },
+                },
+                upsert=True,
+            )
+
+        #get locations nearby, their times, stock
+        locationsDict = {}
+        for result in value['results']:
+            # Query the database to find the location
+            db_location = await self.settings["db"]["locations"].find_one({'_id': result["place_id"]})
+
+            if db_location:
+                # Extract the required information and store it in the dictionary
+                locationsDict[result["place_id"]] = {
+                    'latlong': db_location['latlong'],
+                    'stock': db_location['stock']
+                }
+
+        #CALL THIS FOR ALGO
+        #itemTypes is list of strings we want
+        itemTypes = data["items"] #need to extend to multiple
+
+        currentTime = time.time
+
+        startingLocation = [data['lat'],data['long']]
+        path, _ = minDistGradDescent(itemTypes, currentTime, locationsDict, startingLocation)
+        #print(path)
+        for val in path:
+            self.write(val)
         self.finish()
             
         
@@ -270,7 +282,6 @@ class GmapHandler(BaseHandler):
 
 class SwaggerHandler(tornado.web.RequestHandler):
     def get(self):
-        # Specify the path to your Swagger YAML file
         swagger_file_path = "swagger.yaml"
 
         try:
