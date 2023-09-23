@@ -60,7 +60,7 @@ class MainHandler(BaseHandler):
 
     def get(self):
         self.set_status(200)
-        self.render('index.html')
+        self.write({'data1' : ['location1','location2']})
 
 
 def make_app():
