@@ -1,6 +1,4 @@
 import os
-import json
-import ast
 import time
 from datetime import datetime
 import tornado.httpserver
@@ -12,9 +10,7 @@ import motor.motor_tornado
 import googlemaps
 from bson import ObjectId
 from dotenv import load_dotenv
-from tornado import gen, web
 import tornado.web
-from tornado.web import StaticFileHandler
 
 #imports for victor
 import numpy as np
