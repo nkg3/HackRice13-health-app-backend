@@ -19,9 +19,6 @@ from tornado import gen, web
 
 tornado.options.define('port', default='8000', help='REST API Port', type=int)
 
-testList = []
-
-
 class BaseHandler(tornado.web.RequestHandler):
     """
     Base handler gonna to be used instead of RequestHandler
@@ -74,7 +71,6 @@ class MainHandler(BaseHandler):
 class PostHandler(BaseHandler):
     def post(self):
         self.set_status(200)
-        testList.append(self.request.body)
         self.write({'message': self.request.body})
 
 
