@@ -75,7 +75,6 @@ class SubmitHandler(BaseHandler):
     """
     POST handler submitting a report on item and quantity
     """
-
     async def post(self):
         self.set_status(200)
         data = tornado.escape.json_decode(self.request.body)
@@ -96,11 +95,45 @@ class RouteHandler(BaseHandler):
     """
     POST handler for getting the best route
     """
-
-    def post(self):
+    async def post(self):
         self.set_status(200)
-        self.write("ROUTE")
+        data = tornado.escape.json_decode(self.request.body) #get info from front-end
 
+        gmap = self.settings["gmaps"]
+        value = gmap.places_nearby(location=(data["location"]), keyword='drugstore|pharmacy', rank_by='distance') #location around user location
+        
+        for result in value: #put locations into db if not already there
+            self.settings["db"]["locations"].update_one(
+                filter={
+                    '_id': result["place_id"],
+                },
+                update={
+                    '$setOnInsert': {
+                        'latlong': (result["geometry"]["location"]["lat"], result["geometry"]["location"]["lng"]),
+                        'stock': {},
+                        'name': result["name"],
+                        'vicinity': result['vicinity'],
+                    },
+                },
+                upsert=True,
+            )
+
+        #get locations nearby, their times, stock
+        location_data = {}
+        for result in value:
+            # Query the database to find the location
+            db_location = self.settings["db"]["locations"].find_one({'_id': result["place_id"]})
+
+            if db_location:
+                # Extract the required information and store it in the dictionary
+                location_data[result["place_id"]] = {
+                    'location': db_location['latlong'],
+                    'stock': db_location['stock'],
+                    'timestamp': db_location['timestamp']  # Assuming you have a 'timestamp' field in your database
+                }
+
+        
+    
 
 class GmapHandler(BaseHandler):
     async def get(self):
