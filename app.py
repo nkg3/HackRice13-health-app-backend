@@ -69,22 +69,6 @@ class PostHandler(BaseHandler):
         self.set_status(201)
         return self.write(created_report)
 
-class ItemListHandler(BaseHandler):
-    """
-    GET handler for returning list of all possible items
-    """
-
-    async def get(self):
-        self.set_status(200)
-        collection = db.reports
-        try:
-             unique = await collection.distinct("item_type")
-             for val in unique:
-                self.write(val + ", ")
-        finally:
-            self.write("")
-
-
 class SubmitHandler(BaseHandler):
     """
     POST handler submitting a report on item and quantity
@@ -118,7 +102,6 @@ def make_app():
         (r"/", MainHandler),
         (r"/api/report", PostHandler),
         (r"/api/status", StatusHandler),
-        (r"/api/itemList", ItemListHandler),
         (r"/api/submitItem", SubmitHandler),
         (r"/api/GetRoute", RouteHandler),
 
