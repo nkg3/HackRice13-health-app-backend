@@ -1,7 +1,7 @@
 import os
 import json
 import ast
-import datetime
+import time
 import tornado.httpserver
 import tornado.options
 import tornado.ioloop
@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 client = motor.motor_tornado.MotorClient(os.environ["COSMOS_CONNECTION_STRING"])
-db = client.college
+db = client.get_database('primary')
 
 from tornado import gen, web
 
@@ -72,9 +72,17 @@ class MainHandler(BaseHandler):
         self.write({'data1' : ['location1','location2']})
 
 class PostHandler(BaseHandler):
-    def post(self):
+    async def post(self):
         testList.append(self.request.body)
-        self.write({'message': self.request.body})
+        report = {}
+        report["_id"] = str(ObjectId())
+        report["timestamp"] = int(time.time())
+        new_report = await self.settings["db"]["reports"].insert_one(report)
+        created_report = await self.settings["db"]["reports"].find_one(
+            {"_id": new_report.inserted_id}
+        )
+        self.set_status(201)
+        return self.write(created_report)
 
 
 def make_app():
@@ -83,7 +91,8 @@ def make_app():
         template_path=os.path.join(os.path.dirname(__file__), "templates"),
         static_path=os.path.join(os.path.dirname(__file__), "static"),
         default_handler_class=ErrorHandler,
-        default_handler_args=dict(status_code=404)
+        default_handler_args=dict(status_code=404),
+        db=db,
     )
     return tornado.web.Application([
         (r"/", MainHandler),
@@ -102,6 +111,5 @@ app = main()
 
 if __name__ == '__main__':
     print("starting tornado server..........")
-    print("Mongo Connection String: " + os.environ["COSMOS_CONNECTION_STRING"])
     app.listen(tornado.options.options.port)
     tornado.ioloop.IOLoop.current().start()
