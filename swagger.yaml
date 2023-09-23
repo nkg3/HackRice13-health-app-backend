@@ -1,0 +1,100 @@
+openapi: 3.0.0
+info:
+  title: Tornado Web Service API
+  version: 1.0.0
+paths:
+  /api/status:
+    get:
+      summary: Check the status of the web service
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              example:
+                status: Rest API Service status is ok...
+
+  /api/report:
+    post:
+      summary: Create a new report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                item_type:
+                  type: string
+                timestamp:
+                  type: integer
+      responses:
+        '201':
+          description: Report created successfully
+          content:
+            application/json:
+              example:
+                _id: "123456"
+                item_type: "masks"
+                timestamp: 1632374761
+
+  /api/submitItem:
+    post:
+      summary: Submit a report on item and quantity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                place_id:
+                  type: string
+                item:
+                  type: string
+                qty:
+                  type: integer
+      responses:
+        '200':
+          description: Report submitted successfully
+          content:
+            application/json:
+              example:
+                place_id: "789123"
+                item: "mask"
+                qty: 10
+
+  /api/GetRoute:
+    post:
+      summary: Get the best route
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                location:
+                  type: object
+                  properties:
+                    lat:
+                      type: number
+                    lng:
+                      type: number
+                item:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Route calculation successful
+          content:
+            application/json:
+              example:
+                route:
+                  - location: { lat: 29.710336, lng: -95.382414 }
+                    item: mask
+                    qty: 5
+                  - location: { lat: 29.715123, lng: -95.375678 }
+                    item: mask
+                    qty: 10
