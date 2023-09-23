@@ -47,18 +47,6 @@ class StatusHandler(BaseHandler):
         self.set_status(200)
         self.finish({'status': 'Rest API Service status is ok...'})
 
-
-class ParamsHandler(BaseHandler):
-    """
-    GET handler for multiple parameters
-    """
-
-    def get(self, **params):
-        print("get: ", params)
-        self.set_status(200)
-        self.finish({'ok': 'GET success'})
-
-
 class MainHandler(BaseHandler):
     """
     GET handler for main page, loads the index.html
@@ -70,7 +58,6 @@ class MainHandler(BaseHandler):
 
 class PostHandler(BaseHandler):
     async def post(self):
-        testList.append(self.request.body)
         report = {}
         report["_id"] = str(ObjectId())
         report["timestamp"] = int(time.time())
