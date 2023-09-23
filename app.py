@@ -60,7 +60,7 @@ class PostHandler(BaseHandler):
     async def post(self):
         report = {}
         report["_id"] = str(ObjectId())
-        report["item_type"] = "babyFormula"
+        report["item_type"] = "masks"
         report["timestamp"] = int(time.time())
         new_report = await self.settings["db"]["reports"].insert_one(report)
         created_report = await self.settings["db"]["reports"].find_one(
@@ -74,11 +74,15 @@ class ItemListHandler(BaseHandler):
     GET handler for returning list of all possible items
     """
 
-    def get(self):
+    async def get(self):
         self.set_status(200)
-        unique = db.reports.distinict("item_type")
-        self.write(unique)
-
+        collection = db.reports
+        try:
+             unique = await collection.distinct("item_type")
+             for val in unique:
+                self.write(val + ", ")
+        finally:
+            self.write("")
 
 
 class SubmitHandler(BaseHandler):
@@ -101,11 +105,9 @@ class RouteHandler(BaseHandler):
         self.write("ROUTE")
 
 
-
-
 def make_app():
     settings = dict(
-        cookie_secret=str(os.urandom(45)),
+        cookie_secret=str(os.urandom(45)),\
         template_path=os.path.join(os.path.dirname(__file__), "templates"),
         static_path=os.path.join(os.path.dirname(__file__), "static"),
         default_handler_class=ErrorHandler,
@@ -116,9 +118,10 @@ def make_app():
         (r"/", MainHandler),
         (r"/api/report", PostHandler),
         (r"/api/status", StatusHandler),
-        (r"/api/itemList/", ItemListHandler),
-        (r"/api/submitItem/", SubmitHandler),
-        (r"/api/GetRoute/", RouteHandler),
+        (r"/api/itemList", ItemListHandler),
+        (r"/api/submitItem", SubmitHandler),
+        (r"/api/GetRoute", RouteHandler),
+
     ], **settings)
 
 
