@@ -71,7 +71,6 @@ class MainHandler(BaseHandler):
 class PostHandler(BaseHandler):
     def post(self):
         self.set_status(200)
-        self.write({'message': self.request.body})
 
 
 def make_app():
