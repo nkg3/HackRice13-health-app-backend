@@ -14,6 +14,10 @@ from bson import ObjectId
 from dotenv import load_dotenv
 from tornado import gen, web
 
+#imports for victor
+import numpy as np
+import time
+
 load_dotenv()
 client = motor.motor_tornado.MotorClient(os.environ["COSMOS_CONNECTION_STRING"])
 db = client.get_database('primary')
@@ -119,22 +123,128 @@ class RouteHandler(BaseHandler):
             )
 
         #get locations nearby, their times, stock
-        location_data = {}
+        locationsDict = {}
         for result in value:
             # Query the database to find the location
             db_location = self.settings["db"]["locations"].find_one({'_id': result["place_id"]})
 
             if db_location:
                 # Extract the required information and store it in the dictionary
-                location_data[result["place_id"]] = {
+                locationsDict[result["place_id"]] = {
                     'location': db_location['latlong'],
-                    'stock': db_location['stock'],
-                    'timestamp': db_location['timestamp']  # Assuming you have a 'timestamp' field in your database
+                    'stock': [db_location['stock'], db_location['timestamp']]
                 }
 
-        
-    
+        #CALL THIS FOR ALGO
+        #itemTypes is list of strings we want
+        itemTypes = data["item"] #need to extend to multiple
 
+        currentTime = time.time
+
+        startingLocation = data["location"]
+        minDistGradDescent(itemTypes, currentTime, locationsDict, startingLocation)
+        
+
+        #VICTORS HELPER FUNCTIONS
+        def calcProb(currentTime, listOfNumAndTime, averageNum):
+            daysPassed = round((currentTime - listOfNumAndTime[1])/(24 * 60 * 60))
+
+            if listOfNumAndTime[0] == 0:
+                return min(daysPassed/14, .5)
+
+            if daysPassed == 0:
+                return 1
+
+            return min(1, max(0,(1 - daysPassed/listOfNumAndTime[0]))  +  min(daysPassed/14, .5) )
+
+
+        def individualFilter(itemType, currentTime, oneLocDict, averageNum):
+            filteredInnerDict = {'latlong': oneLocDict['latlong'],
+                        'prob': calcProb(currentTime, oneLocDict['stock'][itemType], averageNum)
+                        }
+            return filteredInnerDict
+
+
+        def preProccessFilterAndComputeProbs(itemType, currentTime, locationsDict):
+            averageNum = 0
+            for locid in locationsDict:
+                averageNum += locationsDict[locid]['stock'][itemType][0]
+            averageNum = averageNum/len(locationsDict.keys())
+
+            newFilteredDict = {}
+            for locid in locationsDict:
+                newFilteredDict[locid] = individualFilter(itemType, currentTime, locationsDict[locid], averageNum)
+            return newFilteredDict
+
+        def preProccessFilterAndComputeProbsMultipleItems(itemTypes, currentTime, locationsDict):
+            newCombined = {}
+            for locid in locationsDict:
+                newCombined[locid] = {'latlong': locationsDict[locid]['latlong'],
+                                    'prob': 1
+                                    }
+
+            filtered = [(preProccessFilterAndComputeProbs(itemType, currentTime, locationsDict))  for itemType in itemTypes]
+
+            for individualFiltered in filtered:
+                for locid in individualFiltered:
+                    newCombined[locid]['prob'] *= individualFiltered[locid]['prob']
+
+            return newCombined
+
+
+        def swapPositions(l, pos1, pos2):
+            l2 = l.copy()
+            l2[pos1], l2[pos2] = l2[pos2], l2[pos1]
+            return l2
+
+        def calcPathTimeInPath(path, preProccessed, currentNodeId):
+            probLeave = (1 - preProccessed[currentNodeId]['prob'])
+            distToNext = np.linalg.norm( np.array(preProccessed[path[0]]['latlong']) - np.array(preProccessed[currentNodeId]['latlong'])  )
+
+            if len(path) == 1:
+                return probLeave * distToNext
+
+            newDist = distToNext + calcPathTimeInPath(path[1:], preProccessed, path[0])
+            return probLeave * newDist
+
+        def calcPathTime(path, preProccessed, startingLocation):
+            distToFirstStore = np.linalg.norm(np.array(startingLocation) - np.array(preProccessed[path[0]]['latlong']))
+            return distToFirstStore + calcPathTimeInPath(path[1:], preProccessed, path[0])
+
+        def minDistGradDescent(itemTypes, currentTime, locationsDict, startingLocation):
+            preProccessed = preProccessFilterAndComputeProbsMultipleItems(itemTypes, currentTime, locationsDict)
+
+            starting = list(preProccessed.keys())
+
+            diff = 1
+            i = 0
+            while i<20 and diff != 0:
+                i += 1
+                bestFound, expDistToGo, diff = minPathOneStep(starting, preProccessed, startingLocation)
+                starting = bestFound
+                print(starting, expDistToGo, diff)
+
+            return  bestFound, expDistToGo
+
+        def minPathOneStep(starting, preProccessed, startingLocation):
+            currentMinExpTime = calcPathTime(starting, preProccessed, startingLocation)
+            firstTime = currentMinExpTime
+            currentMinPath = starting
+
+            for firstInx in range(len(starting)):
+                for endingInx in range(len(starting))[firstInx+1:]:
+                    candList = swapPositions(starting, firstInx, endingInx)
+                    candExpTime = calcPathTime(candList, preProccessed, startingLocation)
+
+                    if candExpTime < currentMinExpTime:
+                        currentMinPath = candList
+                        currentMinExpTime = candExpTime
+
+            return currentMinPath, currentMinExpTime, firstTime - currentMinExpTime
+        
+        self.finish()
+            
+        
 class GmapHandler(BaseHandler):
     async def get(self):
         def googlePlacesSearch(self):
