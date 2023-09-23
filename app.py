@@ -60,6 +60,7 @@ class PostHandler(BaseHandler):
     async def post(self):
         report = {}
         report["_id"] = str(ObjectId())
+        report["item_type"] = "babyFormula"
         report["timestamp"] = int(time.time())
         new_report = await self.settings["db"]["reports"].insert_one(report)
         created_report = await self.settings["db"]["reports"].find_one(
@@ -75,7 +76,8 @@ class ItemListHandler(BaseHandler):
 
     def get(self):
         self.set_status(200)
-        self.write("Items")
+        unique = db.reports.distinict("item_type")
+        self.write(unique)
 
 
 
