@@ -66,6 +66,7 @@ class MainHandler(BaseHandler):
 
 class PostHandler(BaseHandler):
     def post(self):
+        self.set_status(200)
         testList.append(self.request.body)
         self.write({'message': self.request.body})
 
