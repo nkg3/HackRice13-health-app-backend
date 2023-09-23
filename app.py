@@ -2,20 +2,22 @@ import os
 import json
 import ast
 import time
+from datetime import datetime
 import tornado.httpserver
 import tornado.options
 import tornado.ioloop
 import tornado.web
 import tornado.wsgi
 import motor.motor_tornado
+import googlemaps
 from bson import ObjectId
 from dotenv import load_dotenv
+from tornado import gen, web
 
 load_dotenv()
 client = motor.motor_tornado.MotorClient(os.environ["COSMOS_CONNECTION_STRING"])
 db = client.get_database('primary')
-
-from tornado import gen, web
+gmaps = googlemaps.Client(key=os.environ["GOOGLE_MAPS_API_KEY"])
 
 tornado.options.define('port', default='8000', help='REST API Port', type=int)
 
@@ -97,10 +99,21 @@ class SubmitHandler(BaseHandler):
     POST handler submitting a report on item and quantity
     """
 
-    def post(self):
+    async def post(self):
         self.set_status(200)
-        self.write("SUBMITTED")
-
+        data = tornado.escape.json_decode(self.request.body)
+        place = await self.settings["db"]["locations"].find_one(
+            filter={
+                '_id': data["place_id"],
+            }
+        )
+        place["stock"][data["item"]] = (data["qty"], int(time.time()))
+        await self.settings["db"]["locations"].replace_one(
+            {'_id': place['_id']},
+            place
+        )
+        self.write(data)
+        self.write([{'name': 'narcan', 'id': 0}, {'name': 'mask', 'id': 1}])
 
 class RouteHandler(BaseHandler):
     """
@@ -112,6 +125,30 @@ class RouteHandler(BaseHandler):
         self.write("ROUTE")
 
 
+class GmapHandler(BaseHandler):
+    async def get(self):
+        def googlePlacesSearch(self):
+            gmap = self.settings["gmaps"]
+            value = gmap.places_nearby(location=(29.710336, -95.382414), keyword='drugstore|pharmacy', rank_by='distance')
+            return value
+        searchResult = googlePlacesSearch(self)
+        for result in searchResult["results"]:
+            self.settings["db"]["locations"].update_one(
+                filter={
+                    '_id': result["place_id"],
+                },
+                update={
+                    '$setOnInsert': {
+                        'latlong': (result["geometry"]["location"]["lat"], result["geometry"]["location"]["lng"]),
+                        'stock': {},
+                        'name': result["name"],
+                        'vicinity': result['vicinity'],
+                    },
+                },
+                upsert=True,
+            )
+        self.set_status(200)
+        self.write(searchResult)
 
 
 def make_app():
@@ -122,6 +159,7 @@ def make_app():
         default_handler_class=ErrorHandler,
         default_handler_args=dict(status_code=404),
         db=db,
+        gmaps=gmaps
     )
     return tornado.web.Application([
         (r"/", MainHandler),
@@ -129,6 +167,7 @@ def make_app():
         (r"/api/status", StatusHandler),
         (r"/api/itemList/", ItemListHandler),
         (r"/api/submitItem/", SubmitHandler),
+        (r"/api/gmap", GmapHandler),
         (r"/api/GetRoute/", RouteHandler),
         (r"/api/tornado/(?P<one>[^\/]+)/?(?P<two>[^\/]+)?/?(?P<three>[^\/]+)?/?(?P<four>[^\/]+)?", ParamsHandler),
     ], **settings)
