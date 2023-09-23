@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: Tornado Web Service API
+  title: HackRice 13 Health App API
   version: 1.0.0
 paths:
   /api/status:
