@@ -7,6 +7,13 @@ import tornado.options
 import tornado.ioloop
 import tornado.web
 import tornado.wsgi
+import motor.motor_tornado
+from bson import ObjectId
+from dotenv import load_dotenv
+
+load_dotenv()
+client = motor.motor_tornado.MotorClient(os.environ["COSMOS_CONNECTION_STRING"])
+db = client.college
 
 from tornado import gen, web
 
@@ -88,5 +95,6 @@ app = main()
 
 if __name__ == '__main__':
     print("starting tornado server..........")
+    print("Mongo Connection String: " + os.environ["COSMOS_CONNECTION_STRING"])
     app.listen(tornado.options.options.port)
     tornado.ioloop.IOLoop.current().start()
