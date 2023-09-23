@@ -49,18 +49,6 @@ class StatusHandler(BaseHandler):
         self.set_status(200)
         self.finish({'status': 'Rest API Service status is ok...'})
 
-
-class ParamsHandler(BaseHandler):
-    """
-    GET handler for multiple parameters
-    """
-
-    def get(self, **params):
-        print("get: ", params)
-        self.set_status(200)
-        self.finish({'ok': 'GET success'})
-
-
 class MainHandler(BaseHandler):
     """
     GET handler for main page, loads the index.html
@@ -72,9 +60,9 @@ class MainHandler(BaseHandler):
 
 class PostHandler(BaseHandler):
     async def post(self):
-        testList.append(self.request.body)
         report = {}
         report["_id"] = str(ObjectId())
+        report["item_type"] = "masks"
         report["timestamp"] = int(time.time())
         new_report = await self.settings["db"]["reports"].insert_one(report)
         created_report = await self.settings["db"]["reports"].find_one(
@@ -82,17 +70,6 @@ class PostHandler(BaseHandler):
         )
         self.set_status(201)
         return self.write(created_report)
-
-class ItemListHandler(BaseHandler):
-    """
-    GET handler for returning list of all possible items
-    """
-
-    def get(self):
-        self.set_status(200)
-        self.write("Items")
-
-
 
 class SubmitHandler(BaseHandler):
     """
@@ -153,7 +130,7 @@ class GmapHandler(BaseHandler):
 
 def make_app():
     settings = dict(
-        cookie_secret=str(os.urandom(45)),
+        cookie_secret=str(os.urandom(45)),\
         template_path=os.path.join(os.path.dirname(__file__), "templates"),
         static_path=os.path.join(os.path.dirname(__file__), "static"),
         default_handler_class=ErrorHandler,
@@ -165,11 +142,10 @@ def make_app():
         (r"/", MainHandler),
         (r"/api/report", PostHandler),
         (r"/api/status", StatusHandler),
-        (r"/api/itemList/", ItemListHandler),
-        (r"/api/submitItem/", SubmitHandler),
+        (r"/api/submitItem", SubmitHandler),
         (r"/api/gmap", GmapHandler),
-        (r"/api/GetRoute/", RouteHandler),
-        (r"/api/tornado/(?P<one>[^\/]+)/?(?P<two>[^\/]+)?/?(?P<three>[^\/]+)?/?(?P<four>[^\/]+)?", ParamsHandler),
+        (r"/api/GetRoute", RouteHandler),
+
     ], **settings)
 
 
