@@ -106,7 +106,7 @@ class RouteHandler(BaseHandler):
         data = tornado.escape.json_decode(self.request.body) #get info from front-end
 
         gmap = self.settings["gmaps"]
-        value = gmap.places_nearby(location=(data["location"]), keyword='drugstore|pharmacy', rank_by='distance') #location around user location
+        value = gmap.places_nearby(location=((data["lat"],data["long"])), keyword='drugstore|pharmacy', rank_by='distance') #location around user location
         
         for result in value: #put locations into db if not already there
             self.settings["db"]["locations"].update_one(
@@ -139,11 +139,11 @@ class RouteHandler(BaseHandler):
 
         #CALL THIS FOR ALGO
         #itemTypes is list of strings we want
-        itemTypes = data["item"] #need to extend to multiple
+        itemTypes = data["items"] #need to extend to multiple
 
         currentTime = time.time
 
-        startingLocation = data["location"]
+        startingLocation = [data['lat'],data['long']]
         minDistGradDescent(itemTypes, currentTime, locationsDict, startingLocation)
         
 
