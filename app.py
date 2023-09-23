@@ -125,6 +125,7 @@ def make_app():
     )
     return tornado.web.Application([
         (r"/", MainHandler),
+        (r"/api/report", PostHandler),
         (r"/api/status", StatusHandler),
         (r"/api/itemList/", ItemListHandler),
         (r"/api/submitItem/", SubmitHandler),
