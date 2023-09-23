@@ -12,6 +12,8 @@ from tornado import gen, web
 
 tornado.options.define('port', default='8000', help='REST API Port', type=int)
 
+testList = []
+
 
 class BaseHandler(tornado.web.RequestHandler):
     """
@@ -62,6 +64,11 @@ class MainHandler(BaseHandler):
         self.set_status(200)
         self.write({'data1' : ['location1','location2']})
 
+class PostHandler(BaseHandler):
+    def post(self):
+        testList.append(self.request.body)
+        self.write({'message': self.request.body})
+
 
 def make_app():
     settings = dict(
@@ -74,7 +81,7 @@ def make_app():
     return tornado.web.Application([
         (r"/", MainHandler),
         (r"/api/status", StatusHandler),
-        (r"/api/tornado", MainHandler),
+        (r"/api/postTest", PostHandler),
         (r"/api/tornado/(?P<one>[^\/]+)/?(?P<two>[^\/]+)?/?(?P<three>[^\/]+)?/?(?P<four>[^\/]+)?", ParamsHandler),
     ], **settings)
 
