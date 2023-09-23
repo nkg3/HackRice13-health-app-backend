@@ -60,19 +60,6 @@ class MainHandler(BaseHandler):
         self.set_status(200)
         self.write({'data1' : ['location1','location2']})
 
-class PostHandler(BaseHandler):
-    async def post(self):
-        report = {}
-        report["_id"] = str(ObjectId())
-        report["item_type"] = "masks"
-        report["timestamp"] = int(time.time())
-        new_report = await self.settings["db"]["reports"].insert_one(report)
-        created_report = await self.settings["db"]["reports"].find_one(
-            {"_id": new_report.inserted_id}
-        )
-        self.set_status(201)
-        return self.write(created_report)
-
 class SubmitHandler(BaseHandler):
     """
     POST handler submitting a report on item and quantity
@@ -256,12 +243,14 @@ class RouteHandler(BaseHandler):
             
         
 class GmapHandler(BaseHandler):
-    async def get(self):
-        def googlePlacesSearch(self):
+    async def post(self):
+        data = tornado.escape.json_decode(self.request.body)
+        def googlePlacesSearch(self, lat, long):
             gmap = self.settings["gmaps"]
-            value = gmap.places_nearby(location=(29.710336, -95.382414), keyword='drugstore|pharmacy', rank_by='distance')
+            value = gmap.places_nearby(location=(lat, long), keyword='drugstore|pharmacy', rank_by='distance')
             return value
-        searchResult = googlePlacesSearch(self)
+        searchResult = googlePlacesSearch(self, data["lat"], data["long"])
+        ret = []
         for result in searchResult["results"]:
             self.settings["db"]["locations"].update_one(
                 filter={
@@ -277,8 +266,16 @@ class GmapHandler(BaseHandler):
                 },
                 upsert=True,
             )
+            resData = {
+                'id': result["place_id"],
+                'name': result["name"],
+                'vicinity': result['vicinity'],
+                'lat': result["geometry"]["location"]["lat"],
+                'long': result["geometry"]["location"]["lng"]
+            }
+            ret.append(resData)
         self.set_status(200)
-        self.write(searchResult)
+        self.write({'results': ret})
 
 class SwaggerHandler(tornado.web.RequestHandler):
     def get(self):
@@ -306,7 +303,6 @@ def make_app():
     )
     return tornado.web.Application([
         (r"/", MainHandler),
-        (r"/api/report", PostHandler),
         (r"/api/status", StatusHandler),
         (r"/api/submitItem", SubmitHandler),
         (r"/api/gmap", GmapHandler),
