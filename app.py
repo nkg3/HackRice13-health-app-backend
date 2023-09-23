@@ -68,9 +68,38 @@ class MainHandler(BaseHandler):
         self.set_status(200)
         self.write({'data1' : ['location1','location2']})
 
-class PostHandler(BaseHandler):
+
+class ItemListHandler(BaseHandler):
+    """
+    GET handler for returning list of all possible items
+    """
+
+    def get(self):
+        self.set_status(200)
+        self.write("Items")
+
+
+
+class SubmitHandler(BaseHandler):
+    """
+    POST handler submitting a report on item and quantity
+    """
+
     def post(self):
         self.set_status(200)
+        self.write("SUBMITTED")
+
+
+class RouteHandler(BaseHandler):
+    """
+    POST handler for getting the best route
+    """
+
+    def post(self):
+        self.set_status(200)
+        self.write("ROUTE")
+
+
 
 
 def make_app():
@@ -84,7 +113,9 @@ def make_app():
     return tornado.web.Application([
         (r"/", MainHandler),
         (r"/api/status", StatusHandler),
-        (r"/api/postTest", PostHandler),
+        (r"/api/itemList/", ItemListHandler),
+        (r"/api/submitItem/", SubmitHandler),
+        (r"/api/GetRoute/", RouteHandler),
         (r"/api/tornado/(?P<one>[^\/]+)/?(?P<two>[^\/]+)?/?(?P<three>[^\/]+)?/?(?P<four>[^\/]+)?", ParamsHandler),
     ], **settings)
 
