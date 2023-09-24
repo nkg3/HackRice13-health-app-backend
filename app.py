@@ -78,7 +78,6 @@ class SubmitHandler(BaseHandler):
             place
         )
         self.write(data)
-        self.write([{'name': 'narcan', 'id': 0}, {'name': 'mask', 'id': 1}])
 
 class RouteHandler(BaseHandler):
     """
@@ -101,6 +100,7 @@ class RouteHandler(BaseHandler):
 
         def individualFilter(itemType, currentTime, oneLocDict, averageNum):
             if itemType in oneLocDict['stock']:
+                print('itemtype ' + str(itemType) + " found with value: " + str(oneLocDict['stock'][itemType]))
                 filteredInnerDict = {'latlong': oneLocDict['latlong'],
                         'prob': calcProb(currentTime, oneLocDict['stock'][itemType], averageNum)
                         }
@@ -124,6 +124,7 @@ class RouteHandler(BaseHandler):
 
             newFilteredDict = {}
             for locid in locationsDict:
+                print(locid)
                 newFilteredDict[locid] = individualFilter(itemType, currentTime, locationsDict[locid], averageNum)
             return newFilteredDict
 
@@ -230,9 +231,9 @@ class RouteHandler(BaseHandler):
 
         #CALL THIS FOR ALGO
         #itemTypes is list of strings we want
-        itemTypes = data["items"] #need to extend to multiple
+        itemTypes = data["items"] #need to extend to multiplea
 
-        currentTime = time.time
+        currentTime = time.time()
 
         startingLocation = [data['lat'],data['long']]
         path, _ = minDistGradDescent(itemTypes, currentTime, locationsDict, startingLocation)
