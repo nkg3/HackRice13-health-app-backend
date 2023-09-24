@@ -95,7 +95,7 @@ class RouteHandler(BaseHandler):
             if daysPassed == 0:
                 return 1
 
-            return min(1, max(0,(1 - daysPassed/listOfNumAndTime[0]))  +  min(daysPassed/14, .5) )
+            return min(1, max(0,(1 - daysPassed/listOfNumAndTime[0])))  +  min(daysPassed/14, .5)
 
 
         def individualFilter(itemType, currentTime, oneLocDict, averageNum):
